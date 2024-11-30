@@ -59,7 +59,7 @@ def open_order(order_type):
             print("Échec de la sélection de", symbol)
             return
     # Calculer la taille du lot en fonction du solde
-    lot = float("{:.2f}".format(balance * 0.001))
+    lot = float("{:.2f}".format(balance * 0.01))
     if order_type == 'buy':
         price = mt5.symbol_info_tick(symbol).ask
         order_type_mt5 = mt5.ORDER_TYPE_BUY
