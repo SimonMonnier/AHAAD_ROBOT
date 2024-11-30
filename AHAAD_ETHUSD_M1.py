@@ -181,7 +181,7 @@ class IchimokuStrategy:
 
         # Définir le seuil de consolidation
         data['ATR_Mean'] = data['ATR14'].rolling(window=100).mean()
-        data['Consolidation'] = np.where(data['ATR14'] < (data['ATR_Mean'] * 0.5), 1, 0)
+        data['Consolidation'] = np.where(data['ATR14'] < (data['ATR_Mean'] * 0.01618033), 1, 0)
 
         # Déterminer l'état du marché avec des conditions de confirmation, incluant le Chikou Span
         conditions = [
