@@ -30,7 +30,7 @@ def get_account_balance():
         print("Échec de la récupération des informations du compte")
         return None
 
-def get_data(timeframe, n=200):
+def get_data(timeframe, n=1000):
     utc_now = datetime.datetime.now(pytz.utc)
     utc_from = utc_now - datetime.timedelta(minutes=n)
     rates = mt5.copy_rates_range(symbol, timeframe, utc_from, utc_now)
@@ -60,6 +60,8 @@ def open_order(order_type):
             return
     # Calculer la taille du lot en fonction du solde
     lot = float("{:.2f}".format(balance * 0.0001))
+    if lot > 100:
+        lot = 100
     if order_type == 'buy':
         price = mt5.symbol_info_tick(symbol).ask
         order_type_mt5 = mt5.ORDER_TYPE_BUY
@@ -140,12 +142,12 @@ class IchimokuStrategy:
         pass
 
     def calculate_indicators(self, data):
-        data = data.copy()
-
+        data = data.copy(deep=True)  # Assurer une copie profonde
+        data = data.dropna()
         # Calcul des EMA
         data['EMA20'] = data['close'].ewm(span=20, adjust=False).mean()
         data['EMA50'] = data['close'].ewm(span=50, adjust=False).mean()
-
+        data = data.dropna()
         # Calcul de l'ATR14
         data['TR'] = np.maximum(
             (data['high'] - data['low']),
@@ -154,13 +156,17 @@ class IchimokuStrategy:
                 abs(data['low'] - data['close'].shift(1))
             )
         )
+        data = data.dropna()
         data['ATR14'] = data['TR'].rolling(window=14).mean()
-
+        data = data.dropna()
         # Calcul du RSI
         data['RSI14'] = pta.rsi(data['close'], length=14)
-
+        data = data.dropna()
         # Calcul de l'Ichimoku avec append=True via l'accesseur DataFrame
         data.ta.ichimoku(append=True)
+        data = data.dropna()
+        # Debug : Vérifier les colonnes après l'ajout d'Ichimoku
+        print("Colonnes après l'ajout d'Ichimoku :", data.columns)
 
         # Renommer les colonnes Ichimoku pour correspondre aux noms attendus
         ichimoku_columns = {
@@ -170,7 +176,10 @@ class IchimokuStrategy:
             'IKS_26': 'ICHIMOKU_Kijun',
             'ICS_26': 'ICHIMOKU_Chikou'
         }
-        data.rename(columns=ichimoku_columns, inplace=True)
+        data = data.rename(columns=ichimoku_columns)  # Éviter inplace=True
+
+        # Debug : Vérifier les colonnes après renommage
+        print("Colonnes après renommage Ichimoku :", data.columns)
 
         # Vérifier si les colonnes Ichimoku ont été ajoutées
         required_columns = ['ICHIMOKU_Senkou_A', 'ICHIMOKU_Senkou_B', 'ICHIMOKU_Tenkan', 'ICHIMOKU_Kijun', 'ICHIMOKU_Chikou']
@@ -180,21 +189,23 @@ class IchimokuStrategy:
             raise KeyError(f"Les colonnes Ichimoku manquent : {missing_columns}")
 
         # Définir le seuil de consolidation
-        data['ATR_Mean'] = data['ATR14'].rolling(window=100).mean()
-        data['Consolidation'] = np.where(data['ATR14'] < (data['ATR_Mean'] * 0.01618033), 1, 0)
-
+        data.loc[:, 'ATR_Mean'] = data['ATR14'].rolling(window=100).mean()  # Utiliser .loc
+        data.loc[:, 'Consolidation'] = np.where(data['ATR14'] < (data['ATR_Mean'] * 0.01618033), 1, 0)  # Utiliser .loc
+        data = data.dropna()
         # Déterminer l'état du marché avec des conditions de confirmation, incluant le Chikou Span
         conditions = [
             (data['EMA20'] > data['EMA50']) & 
             (data['Consolidation'] == 0) & 
-            (data['RSI14'] > 50) & 
+            (data['RSI14'] > 40) & 
             (data['close'] > data['ICHIMOKU_Senkou_A']) &
+            #(data['close'] > data['ICHIMOKU_Senkou_B']) &
             (data['ICHIMOKU_Chikou'] > data['close']),  # Filtre Chikou Span pour buy
 
             (data['EMA20'] < data['EMA50']) & 
             (data['Consolidation'] == 0) & 
-            (data['RSI14'] < 50) & 
-            (data['close'] < data['ICHIMOKU_Senkou_A']) &
+            (data['RSI14'] < 60) & 
+            #(data['close'] < data['ICHIMOKU_Senkou_A']) &
+            (data['close'] < data['ICHIMOKU_Senkou_B']) &
             (data['ICHIMOKU_Chikou'] < data['close']),  # Filtre Chikou Span pour sell
 
             (data['Consolidation'] == 1)
@@ -212,7 +223,8 @@ class IchimokuStrategy:
         # Utiliser uniquement les données disponibles jusqu'à l'instant présent
         current_state = data['Market State'].iloc[-1]
         current_consecutive = data['Trend_Consecutive'].iloc[-1]
-
+        print(current_state)
+        print(current_consecutive)
         if current_state == 'Tendance Haussière' and current_consecutive >= min_consecutive:
             return 'buy'
         elif current_state == 'Tendance Baissière' and current_consecutive >= min_consecutive:
@@ -263,6 +275,9 @@ def main():
                 # Calculer les indicateurs et décider de l'action
                 try:
                     data_with_indicators = ichimoku_strategy.calculate_indicators(data_m1)
+                    print(data_with_indicators)
+                        
+
                     action = ichimoku_strategy.decide_action(data_with_indicators)
                 except KeyError as e:
                     print(f"Erreur lors du calcul des indicateurs : {e}")
