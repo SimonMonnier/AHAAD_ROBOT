@@ -18,8 +18,8 @@ timeframe_m1 = mt5.TIMEFRAME_M1
 
 # Définir la période de backtest
 timezone = pytz.timezone("Etc/UTC")
-start_date = datetime(2024, 11, 16, tzinfo=timezone)
-end_date = datetime(2024, 11, 30, tzinfo=timezone)
+start_date = datetime(2023, 1, 1, tzinfo=timezone)
+end_date = datetime(2024, 12, 1, tzinfo=timezone)
 
 # Vérifier si le symbole est disponible
 symbol_info = mt5.symbol_info(symbol)
@@ -34,6 +34,9 @@ if not symbol_info.visible:
         print(f"Impossible de sélectionner le symbole {symbol}, arrêt du script.")
         mt5.shutdown()
         exit()
+
+# Récupérer la taille du point
+point_size = symbol_info.point
 
 # Fonction pour récupérer les données historiques
 def get_data(symbol, timeframe, start, end):
@@ -55,8 +58,9 @@ if data_m1 is None:
     exit()
 
 class Backtest:
-    def __init__(self, data_m1, initial_balance=100, stop_balance=50):
+    def __init__(self, data_m1, point_size, initial_balance=100, stop_balance=50):
         self.data_m1 = data_m1
+        self.point_size = point_size
         self.initial_balance = initial_balance
         self.balance = initial_balance
         self.stop_balance = stop_balance
@@ -78,9 +82,15 @@ class Backtest:
         self.total_trades = 0
         self.equity_curve = []
         self.highest_balance = initial_balance
+        
+        # Variables pour la gestion de la simulation
+        self.simulation_mode = False
+        self.simulated_trades = []
+        self.simulated_balance = initial_balance  # Solde pour les trades simulés
+        self.simulated_gains = 0  # Compteur de gains simulés
 
     def calculate_indicators(self, data):
-        data = data.copy()
+        data = data.copy(deep=True)  # Assurer une copie profonde
 
         # Calcul des EMA
         data['EMA20'] = data['close'].ewm(span=20, adjust=False).mean()
@@ -113,7 +123,7 @@ class Backtest:
             'IKS_26': 'ICHIMOKU_Kijun',
             'ICS_26': 'ICHIMOKU_Chikou'
         }
-        data.rename(columns=ichimoku_columns, inplace=True)
+        data = data.rename(columns=ichimoku_columns)  # Éviter inplace=True
 
         # Debug : Vérifier les colonnes après renommage
         print("Colonnes après renommage Ichimoku :", data.columns)
@@ -126,21 +136,23 @@ class Backtest:
             raise KeyError(f"Les colonnes Ichimoku manquent : {missing_columns}")
 
         # Définir le seuil de consolidation
-        data['ATR_Mean'] = data['ATR14'].rolling(window=100).mean()
-        data['Consolidation'] = np.where(data['ATR14'] < (data['ATR_Mean'] * 0.01618033), 1, 0)
+        data.loc[:, 'ATR_Mean'] = data['ATR14'].rolling(window=100).mean()  # Utiliser .loc
+        data.loc[:, 'Consolidation'] = np.where(data['ATR14'] < (data['ATR_Mean'] * 0.01618033), 1, 0)  # Utiliser .loc
 
         # Déterminer l'état du marché avec des conditions de confirmation, incluant le Chikou Span
         conditions = [
             (data['EMA20'] > data['EMA50']) & 
             (data['Consolidation'] == 0) & 
-            (data['RSI14'] > 50) & 
+            (data['RSI14'] > 40) & 
             (data['close'] > data['ICHIMOKU_Senkou_A']) &
+            #(data['close'] > data['ICHIMOKU_Senkou_B']) &
             (data['ICHIMOKU_Chikou'] > data['close']),  # Filtre Chikou Span pour buy
 
             (data['EMA20'] < data['EMA50']) & 
             (data['Consolidation'] == 0) & 
-            (data['RSI14'] < 50) & 
-            (data['close'] < data['ICHIMOKU_Senkou_A']) &
+            (data['RSI14'] < 60) & 
+            #(data['close'] < data['ICHIMOKU_Senkou_A']) &
+            (data['close'] < data['ICHIMOKU_Senkou_B']) &
             (data['ICHIMOKU_Chikou'] < data['close']),  # Filtre Chikou Span pour sell
 
             (data['Consolidation'] == 1)
@@ -154,11 +166,10 @@ class Backtest:
 
         return data
 
-    def decide_action(self, data, min_consecutive=3):
+    def decide_action(self, data, min_consecutive=24):
         # Utiliser uniquement les données disponibles jusqu'à l'instant présent
         current_state = data['Market State'].iloc[-1]
         current_consecutive = data['Trend_Consecutive'].iloc[-1]
-
         if current_state == 'Tendance Haussière' and current_consecutive >= min_consecutive:
             return 'buy'
         elif current_state == 'Tendance Baissière' and current_consecutive >= min_consecutive:
@@ -168,95 +179,187 @@ class Backtest:
         else:
             return 'hold'
 
-    def execute_action(self, action, current_price, current_time):
+    def execute_action(self, action, current_price, current_time, spread, next_close=None):
+        if self.simulation_mode:
+            # Exécuter des trades simulés avec le prochain prix de clôture
+            self.execute_simulated_trade(action, current_price, current_time, spread, next_close)
+        else:
+            # Exécuter des trades réels
+            self.execute_real_trade(action, current_price, current_time, spread)
+
+    def execute_real_trade(self, action, current_price, current_time, spread):
         if action == 'buy':
             if self.position == 'sell':
-                self.close_position(current_price, current_time)
+                self.close_position(current_price, current_time, spread)
             self.update_position_size()
             if self.position != 'buy':
-                self.open_position('buy', current_price, current_time)
+                self.open_position('buy', current_price, current_time, spread)
         elif action == 'sell':
             if self.position == 'buy':
-                self.close_position(current_price, current_time)
+                self.close_position(current_price, current_time, spread)
             self.update_position_size()
             if self.position != 'sell':
-                self.open_position('sell', current_price, current_time)
-        elif action == 'hold':
-            self.close_position(current_price, current_time)
+                self.open_position('sell', current_price, current_time, spread)
         elif action == 'close':
-            self.close_position(current_price, current_time)
+            self.close_position(current_price, current_time, spread)
+        # 'hold' ne nécessite aucune action
 
-    def open_position(self, position_type, price, time):
+    def execute_simulated_trade(self, action, current_price, current_time, spread, next_close=None):
+        if next_close is None:
+            print("Pas de prix de clôture suivant disponible pour la simulation.")
+            return
+
+        # Simuler un trade basé sur le prochain prix de clôture
+        simulated_profit = 0.0
+        entry_price = 0.0
+        exit_price = 0.0
+
+        if action == 'buy':
+            entry_price = current_price + spread
+            exit_price = next_close - spread
+            simulated_profit = (exit_price - entry_price) * self.position_size
+        elif action == 'sell':
+            entry_price = current_price - spread
+            exit_price = next_close + spread
+            simulated_profit = (entry_price - exit_price) * self.position_size
+        elif action == 'close':
+            if self.position == 'buy':
+                entry_price = self.entry_price
+                exit_price = current_price - spread
+                simulated_profit = (exit_price - entry_price) * self.position_size
+            elif self.position == 'sell':
+                entry_price = self.entry_price
+                exit_price = current_price + spread
+                simulated_profit = (entry_price - exit_price) * self.position_size
+            else:
+                simulated_profit = 0.0
+
+        # Mettre à jour le solde simulé
+        self.simulated_balance += simulated_profit
+
+        # Enregistrer le trade simulé
+        trade = {
+            'entry_time': current_time,
+            'exit_time': current_time,  # Simulation : entrée et sortie immédiates
+            'position': action if action in ['buy', 'sell'] else self.position,
+            'entry_price': entry_price if action in ['buy', 'sell'] else self.entry_price,
+            'exit_price': exit_price,
+            'profit': simulated_profit,
+            'balance': self.simulated_balance  # Le solde simulé
+        }
+        self.simulated_trades.append(trade)
+
+        # Vérifier si le trade simulé est gagnant
+        if simulated_profit > 0:
+            self.simulated_gains += 1
+            print(f"Trade simulé gagnant {self.simulated_gains}/2 : {trade}")
+            if self.simulated_gains >= 1:
+                self.simulation_mode = False  # Sortir du mode simulation après 2 gains
+                self.simulated_gains = 0  # Réinitialiser le compteur de gains simulés
+                self.consecutive_losses = 0  # Réinitialiser les pertes consécutives
+                print("2 gains simulés atteints. Retour en mode réel.")
+        else:
+            self.simulated_gains = 0  # Réinitialiser le compteur si un trade simulé est perdant
+            print(f"Trade simulé perdant : {trade}")
+            # Continuer en mode simulation jusqu'à atteindre 2 gains simulés
+
+    def open_position(self, position_type, price, time, spread):
+        if position_type == 'buy':
+            # Pour une position longue, achetez au prix ask (prix actuel + spread)
+            entry_price = price + spread
+        elif position_type == 'sell':
+            # Pour une position courte, vendez au prix bid (prix actuel - spread)
+            entry_price = price - spread
         self.position = position_type
-        self.entry_price = price
+        self.entry_price = entry_price
         self.entry_time = time
         self.update_position_size()
-        print(f"Ouverture d'une position {position_type} à {price} au {time}")
+        print(f"Ouverture d'une position {position_type} à {entry_price} au {time}")
 
-    def close_position(self, price, time):
-        if self.position is not None:
-            profit = 0.0
-            price_difference = price - self.entry_price
-            if self.position == 'buy':
-                profit = price_difference * self.position_size
-            elif self.position == 'sell':
-                profit = -price_difference * self.position_size
-            self.balance += profit
-            self.total_trades += 1
-            if profit > 0:
-                self.total_gain += profit
-                self.win_trades += 1
-                self.consecutive_wins += 1
-                self.consecutive_losses = 0
-                if self.consecutive_wins > self.max_consecutive_wins:
-                    self.max_consecutive_wins = self.consecutive_wins
-            else:
-                self.total_loss += abs(profit)
-                self.loss_trades += 1
-                self.consecutive_losses += 1
-                self.consecutive_wins = 0
-                if self.consecutive_losses > self.max_consecutive_losses:
-                    self.max_consecutive_losses = self.consecutive_losses
-            # Mise à jour du drawdown
-            if self.balance > self.highest_balance:
-                self.highest_balance = self.balance
-            drawdown = (self.highest_balance - self.balance) / self.highest_balance
-            if drawdown > self.max_drawdown:
-                self.max_drawdown = drawdown
-            # Enregistrer le trade
-            trade = {
-                'entry_time': self.entry_time,
-                'exit_time': time,
-                'position': self.position,
-                'entry_price': self.entry_price,
-                'exit_price': price,
-                'profit': profit,
-                'balance': self.balance
-            }
-            self.trades.append(trade)
-            # Afficher les métriques après chaque clôture
-            metrics = self.get_metrics()
-            print(f"=== Métriques après clôture de la position à {time} ===")
-            print(f"Type de position fermée : {self.position}")
-            print(f"Profit du trade : {profit:.2f}")
-            print(f"Solde actuel : {self.balance:.2f}")
-            print(f"Total des trades : {metrics['total_trades']}")
-            print(f"Trades gagnants : {metrics['win_trades']}")
-            print(f"Trades perdants : {metrics['loss_trades']}")
-            print(f"Gain total : {metrics['total_gain']:.2f}")
-            print(f"Perte totale : {metrics['total_loss']:.2f}")
-            print(f"Profit net : {metrics['net_profit']:.2f}")
-            print(f"Max de gains consécutifs : {metrics['max_consecutive_wins']}")
-            print(f"Max de pertes consécutives : {metrics['max_consecutive_losses']}")
-            print(f"Max Drawdown : {self.max_drawdown * 100:.2f}%\n")
-            # Réinitialiser la position
-            self.position = None
-            self.entry_price = 0.0
-            self.entry_time = None
+    def close_position(self, price, time, spread):
+        if self.position == 'buy':
+            # Lors de la clôture d'une position longue, vendez au prix bid (prix actuel - spread)
+            exit_price = price - spread
+        elif self.position == 'sell':
+            # Lors de la clôture d'une position courte, achetez au prix ask (prix actuel + spread)
+            exit_price = price + spread
+        else:
+            return  # Aucune position ouverte
+
+        profit = 0.0
+        if self.position == 'buy':
+            profit = (exit_price - self.entry_price) * self.position_size
+        elif self.position == 'sell':
+            profit = (self.entry_price - exit_price) * self.position_size
+
+        self.balance += profit
+        self.total_trades += 1
+        if profit > 0:
+            self.total_gain += profit
+            self.win_trades += 1
+            self.consecutive_wins += 1
+            self.consecutive_losses = 0
+            if self.consecutive_wins > self.max_consecutive_wins:
+                self.max_consecutive_wins = self.consecutive_wins
+        else:
+            self.total_loss += abs(profit)
+            self.loss_trades += 1
+            self.consecutive_losses += 1
+            self.consecutive_wins = 0
+            if self.consecutive_losses > self.max_consecutive_losses:
+                self.max_consecutive_losses = self.consecutive_losses
+
+            # Vérifier si 2 pertes consécutives sont atteintes pour activer le mode simulation
+            if self.consecutive_losses >= 3:
+                print("2 pertes consécutives atteintes. Passage en mode simulation.")
+                self.simulation_mode = True
+                self.simulated_gains = 0  # Réinitialiser le compteur de gains simulés
+
+        # Mise à jour du drawdown
+        if self.balance > self.highest_balance:
+            self.highest_balance = self.balance
+        drawdown = (self.highest_balance - self.balance) / self.highest_balance
+        if drawdown > self.max_drawdown:
+            self.max_drawdown = drawdown
+
+        # Enregistrer le trade
+        trade = {
+            'entry_time': self.entry_time,
+            'exit_time': time,
+            'position': self.position,
+            'entry_price': self.entry_price,
+            'exit_price': exit_price,
+            'profit': profit,
+            'balance': self.balance
+        }
+        self.trades.append(trade)
+
+        # Afficher les métriques après chaque clôture
+        metrics = self.get_metrics()
+        print(f"=== Métriques après clôture de la position à {time} ===")
+        print(f"Type de position fermée : {self.position}")
+        print(f"Profit du trade : {profit:.2f}")
+        print(f"Solde actuel : {self.balance:.2f}")
+        print(f"Total des trades : {metrics['total_trades']}")
+        print(f"Trades gagnants : {metrics['win_trades']}")
+        print(f"Trades perdants : {metrics['loss_trades']}")
+        print(f"Gain total : {metrics['total_gain']:.2f}")
+        print(f"Perte totale : {metrics['total_loss']:.2f}")
+        print(f"Profit net : {metrics['net_profit']:.2f}")
+        print(f"Max de gains consécutifs : {metrics['max_consecutive_wins']}")
+        print(f"Max de pertes consécutives : {metrics['max_consecutive_losses']}")
+        print(f"Max Drawdown : {self.max_drawdown * 100:.2f}%\n")
+
+        # Réinitialiser la position
+        self.position = None
+        self.entry_price = 0.0
+        self.entry_time = None
 
     def update_position_size(self):
         balance = self.balance
-        self.position_size = float("{:.2f}".format(balance * 0.0001))  # 0,1% du solde
+        self.position_size = float("{:.2f}".format(balance * 0.0001))  # 0,01% du solde
+        if self.position_size > 100:
+            self.position_size = 100
 
     def run_backtest(self):
         data = self.calculate_indicators(self.data_m1.copy())
@@ -265,21 +368,27 @@ class Backtest:
         for i in range(len(data)):
             current_time = data.index[i]
             current_price = data['close'].iloc[i]
+            current_spread = data.get('spread', 0).iloc[i] * self.point_size  # Convertir le spread en prix
             current_data = data.iloc[:i+1]
 
-            action = self.decide_action(current_data, min_consecutive=3)
+            # Déterminer le prochain prix de clôture pour la simulation
+            if i < len(data) - 1:
+                next_close = data['close'].iloc[i + 1]
+            else:
+                next_close = current_price  # Pas de prochain prix pour la dernière barre
+
+            action = self.decide_action(current_data, min_consecutive=14)
             self.actions.append({'time': current_time, 'action': action})  # Enregistrer l'action
 
-            self.execute_action(action, current_price, current_time)
+            self.execute_action(action, current_price, current_time, current_spread, next_close)
             self.equity_curve.append({'time': current_time, 'balance': self.balance})
 
             # Calculer le P&L flottant de la position ouverte
             if self.position is not None:
-                price_difference = current_price - self.entry_price
                 if self.position == 'buy':
-                    floating_pnl = price_difference * self.position_size
+                    floating_pnl = (current_price - self.entry_price) * self.position_size
                 elif self.position == 'sell':
-                    floating_pnl = -price_difference * self.position_size
+                    floating_pnl = (self.entry_price - current_price) * self.position_size
             else:
                 floating_pnl = 0.0
 
@@ -290,19 +399,19 @@ class Backtest:
             if equity <= self.stop_balance:
                 print(f"L'équité a atteint le niveau d'arrêt de {self.stop_balance} en raison d'une position ouverte. Arrêt du backtest.")
                 if self.position is not None:
-                    self.close_position(current_price, current_time)
+                    self.close_position(current_price, current_time, current_spread)
                 break
 
             # Vérifier si le solde a atteint le stop_balance après clôture de position
             if self.balance <= self.stop_balance:
                 print(f"Le solde a atteint le niveau d'arrêt de {self.stop_balance}. Arrêt du backtest.")
                 if self.position is not None:
-                    self.close_position(current_price, current_time)
+                    self.close_position(current_price, current_time, current_spread)
                 break
 
         # Clôturer toute position restante à la fin du backtest
         if self.position is not None:
-            self.close_position(current_price, current_time)
+            self.close_position(current_price, current_time, current_spread)
 
     def get_metrics(self):
         metrics = {
@@ -316,10 +425,11 @@ class Backtest:
             'max_consecutive_losses': self.max_consecutive_losses,
             'max_drawdown': self.max_drawdown,
             'final_balance': self.balance,
+            'simulated_balance': self.simulated_balance
         }
         return metrics
 
-def plot_backtest(data, trades, equity_curve, actions, symbol):
+def plot_backtest(data, trades, equity_curve, actions, symbol, simulated_trades):
     plt.figure(figsize=(14, 7))
 
     # Tracer les prix de clôture
@@ -371,6 +481,17 @@ def plot_backtest(data, trades, equity_curve, actions, symbol):
         plt.scatter(sell_signals['entry_time'], sell_signals['entry_price'], marker='v', color='r', label='Sell Signal', alpha=1)
         plt.scatter(close_signals['exit_time'], close_signals['exit_price'], marker='o', color='b', label='Close Signal', alpha=1)
 
+    # Tracer les trades simulés
+    simulated_trades_df = pd.DataFrame(simulated_trades)
+    if not simulated_trades_df.empty:
+        sim_buy_signals = simulated_trades_df[simulated_trades_df['position'] == 'buy']
+        sim_sell_signals = simulated_trades_df[simulated_trades_df['position'] == 'sell']
+        sim_close_signals = simulated_trades_df[simulated_trades_df['position'] == 'close']
+
+        plt.scatter(sim_buy_signals['entry_time'], sim_buy_signals['entry_price'], marker='^', color='lime', label='Sim Buy Signal', alpha=0.6)
+        plt.scatter(sim_sell_signals['entry_time'], sim_sell_signals['entry_price'], marker='v', color='darkred', label='Sim Sell Signal', alpha=0.6)
+        plt.scatter(sim_close_signals['exit_time'], sim_close_signals['exit_price'], marker='o', color='blue', label='Sim Close Signal', alpha=0.6)
+
     plt.title(f"Analyse du marché {symbol} sur le laps de temps M1")
     plt.xlabel("Temps")
     plt.ylabel("Prix")
@@ -381,7 +502,7 @@ def plot_backtest(data, trades, equity_curve, actions, symbol):
     # Tracer l'équité
     equity_df = pd.DataFrame(equity_curve)
     plt.figure(figsize=(14, 5))
-    plt.plot(equity_df['time'], equity_df['balance'], label='Équité', color='blue')
+    plt.plot(equity_df['time'], equity_df['balance'], label='Équité Réelle', color='blue')
     plt.title("Équité de la stratégie")
     plt.xlabel("Temps")
     plt.ylabel("Balance")
@@ -389,8 +510,8 @@ def plot_backtest(data, trades, equity_curve, actions, symbol):
     plt.show()
 
 def main():
-    # Initialiser le backtest
-    backtest = Backtest(data_m1=data_m1, initial_balance=100, stop_balance=75)
+    # Initialiser le backtest avec point_size
+    backtest = Backtest(data_m1=data_m1, point_size=point_size, initial_balance=100, stop_balance=75)
 
     # Lancer le backtest avec gestion des erreurs
     try:
@@ -414,7 +535,8 @@ def main():
     print(f"Max de gains consécutifs : {metrics['max_consecutive_wins']}")
     print(f"Max de pertes consécutives : {metrics['max_consecutive_losses']}")
     print(f"Max Drawdown : {metrics['max_drawdown'] * 100:.2f}%")
-    print(f"Solde final : {metrics['final_balance']:.2f}")
+    print(f"Solde final réel : {metrics['final_balance']:.2f}")
+    print(f"Solde final simulé : {metrics['simulated_balance']:.2f}")
 
     # Afficher l'historique des trades
     trades_df = pd.DataFrame(backtest.trades)
@@ -426,7 +548,7 @@ def main():
     if plot_results:
         try:
             data_with_indicators = backtest.calculate_indicators(backtest.data_m1.copy()).dropna()
-            plot_backtest(data_with_indicators, trades_df, backtest.equity_curve, backtest.actions, symbol)
+            plot_backtest(data_with_indicators, backtest.trades, backtest.equity_curve, backtest.actions, symbol, backtest.simulated_trades)
         except KeyError as e:
             print(f"Erreur lors du tracé des indicateurs : {e}")
 
