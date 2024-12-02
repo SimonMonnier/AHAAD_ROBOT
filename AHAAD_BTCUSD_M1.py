@@ -369,12 +369,12 @@ def main():
                         execute_simulated_trade(action, latest_closed_bar['close'], spread, next_close)
                 else:
                     if action == 'buy':
-                        if current_position != 'sell':
+                        if current_position == 'sell':
                             close_order(current_price, spread)
                         if current_position != 'buy':
                             open_order('buy')
                     elif action == 'sell':
-                        if current_position != 'buy':
+                        if current_position == 'buy':
                             close_order(current_price, spread)
                         if current_position != 'sell':
                             open_order('sell')
