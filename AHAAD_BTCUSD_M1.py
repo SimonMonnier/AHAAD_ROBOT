@@ -6,6 +6,39 @@ import datetime
 import pytz
 import pandas_ta as pta  # Changement d'alias pour éviter les conflits
 import time
+import os
+
+# ASCII Art d'un robot trader Bitcoin
+
+ascii_art = """
+La ilaha ila llah⠀
+1.618 AHAAD
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣀⣤⣴⣶⣶⣶⣶⣦⣤⣄⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⣀⣤⣾⣿⡿⠿⠛⠛⠛⠛⠛⠛⠻⢿⣿⣿⣦⣄⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⢠⣼⣿⡿⠛⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠙⠿⣿⣷⣄⠀⠀⠀⠀
+⠀⠀⠀⣰⣿⡿⠋⠀⠀⠀⠀⠀⣿⡇⠀⢸⣿⡇⠀⠀⠀⠀⠀⠈⢿⣿⣦⡀⠀⠀
+⠀⠀⣸⣿⡿⠀⠀⠀⠸⠿⣿⣿⣿⡿⠿⠿⣿⣿⣿⣶⣄⠀⠀⠀⠀⢹⣿⣷⠀⠀
+⠀⢠⣿⡿⠁⠀⠀⠀⠀⠀⢸⣿⣿⡇⠀⠀⠀⠈⣿⣿⣿⠀⠀⠀⠀⠀⢹⣿⣧⠀
+⠀⣾⣿⡇⠀⠀⠀⠀⠀⠀⢸⣿⣿⡇⠀⠀⢀⣠⣿⣿⠟⠀⠀⠀⠀⠀⠈⣿⣿⠀
+⠀⣿⣿⡇⠀⠀⠀⠀⠀⠀⢸⣿⣿⡿⠿⠿⠿⣿⣿⣥⣄⠀⠀⠀⠀⠀⠀⣿⣿⠀
+⠀⢿⣿⡇⠀⠀⠀⠀⠀⠀⢸⣿⣿⡇⠀⠀⠀⠀⢻⣿⣿⣧⠀⠀⠀⠀⢀⣿⣿⠀
+⠀⠘⣿⣷⡀⠀⠀⠀⠀⠀⢸⣿⣿⡇⠀⠀⠀⠀⣼⣿⣿⡿⠀⠀⠀⠀⣸⣿⡟⠀
+⠀⠀⢹⣿⣷⡀⠀⠀⢰⣶⣿⣿⣿⣷⣶⣶⣾⣿⣿⠿⠛⠁⠀⠀⠀⣸⣿⡿⠀⠀
+⠀⠀⠀⠹⣿⣷⣄⠀⠀⠀⠀⠀⣿⡇⠀⢸⣿⡇⠀⠀⠀⠀⠀⢀⣾⣿⠟⠁⠀⠀
+⠀⠀⠀⠀⠘⢻⣿⣷⣤⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣠⣾⣿⡿⠋⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠈⠛⢿⣿⣷⣶⣤⣤⣤⣤⣤⣤⣴⣾⣿⣿⠟⠋⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠉⠛⠻⠿⠿⠿⠿⠟⠛⠉⠁
+BTCUSD
+
+Make with love by Simon since 2019 ! ;-)⠀
+"""
+
+print(ascii_art)
+time.sleep(2)
+
+def clear_console():
+    # Efface la console en fonction du système d'exploitation
+    os.system('cls' if os.name == 'nt' else 'clear')
 
 # Initialiser la connexion à MetaTrader 5
 if not mt5.initialize():
@@ -16,9 +49,9 @@ if not mt5.initialize():
 # Paramètres
 symbol = "BTCUSD"
 timeframe = mt5.TIMEFRAME_M1
-nb_candles = 1000  # Nombre de bougies à récupérer
+nb_candles = 100000  # Nombre de bougies à récupérer
 
-# Variables pour les positions
+# Variables pour les positions réelles
 current_position = None  # 'buy', 'sell' ou None
 entry_price = 0.0
 
@@ -28,6 +61,15 @@ simulated_trades = []
 simulated_balance = 100  # Solde initial simulé
 simulated_gains = 0  # Compteur de gains simulés
 consecutive_losses = 0  # Compteur de pertes réelles consécutives
+
+# Variables pour la gestion des positions simulées
+simulated_current_position = None  # 'buy', 'sell' ou None
+simulated_entry_price = 0.0
+
+# Variables supplémentaires pour la gestion des trades simulés
+latest_close_price = 0.0
+spread = 0.0
+simulated_entry_time = None
 
 def get_account_balance():
     account_info = mt5.account_info()
@@ -50,7 +92,29 @@ def get_data(timeframe, n=1000):
     data.set_index('time', inplace=True)
     return data
 
-# Fonctions pour l'exécution des ordres
+def check_existing_position():
+    global current_position, entry_price
+    positions = mt5.positions_get(symbol=symbol)
+    if positions and len(positions) > 0:
+        pos = positions[0]  # Supposant une seule position
+        if pos.type == mt5.POSITION_TYPE_BUY:
+            current_position = 'buy'
+            entry_price = pos.price_open
+            print(f"Position réelle BUY détectée ouverte à {entry_price}")
+        elif pos.type == mt5.POSITION_TYPE_SELL:
+            current_position = 'sell'
+            entry_price = pos.price_open
+            print(f"Position réelle SELL détectée ouverte à {entry_price}")
+        else:
+            print("Type de position réel inconnu détecté.")
+            current_position = None
+            entry_price = 0.0
+    else:
+        print("Aucune position réelle ouverte détectée.")
+        current_position = None
+        entry_price = 0.0
+
+# Fonctions pour l'exécution des ordres réels
 def open_order(order_type):
     global current_position, entry_price, consecutive_losses, simulation_mode
     if simulation_mode:
@@ -70,8 +134,10 @@ def open_order(order_type):
             return
     # Calculer la taille du lot en fonction du solde
     lot = float("{:.2f}".format(balance * 0.0001))
-    if lot > 100:
-        lot = 100
+    if lot > symbol_info.volume_max:
+        lot = symbol_info.volume_max
+    if lot < 0.01:
+        lot = 0.01
     if order_type == 'buy':
         price = mt5.symbol_info_tick(symbol).ask
         order_type_mt5 = mt5.ORDER_TYPE_BUY
@@ -89,7 +155,7 @@ def open_order(order_type):
         "type": order_type_mt5,
         "price": price,
         "deviation": deviation,
-        "magic": 234000,
+        "magic": 3,
         "comment": f"Python script open {order_type}",
         "type_time": mt5.ORDER_TIME_GTC,
         "type_filling": mt5.ORDER_FILLING_IOC,
@@ -103,7 +169,7 @@ def open_order(order_type):
         current_position = order_type
         entry_price = price
 
-def close_order(current_price, spread):
+def close_order():
     global current_position, entry_price, consecutive_losses, simulation_mode, simulated_gains
     if simulation_mode:
         print("En mode simulation, aucune position réelle n'est clôturée.")
@@ -137,7 +203,7 @@ def close_order(current_price, spread):
         "position": pos.ticket,
         "price": price,
         "deviation": deviation,
-        "magic": 234000,
+        "magic": 3,
         "comment": f"Python script close {current_position}",
         "type_time": mt5.ORDER_TIME_GTC,
         "type_filling": mt5.ORDER_FILLING_IOC,
@@ -154,6 +220,9 @@ def close_order(current_price, spread):
             profit = (entry_price - price) * 0.01
         else:
             profit = 0.0
+        clear_console()
+        print(ascii_art)
+
         if profit > 0:
             print(f"Trade réel gagnant : Profit = {profit:.2f}")
             consecutive_losses = 0  # Réinitialiser les pertes consécutives
@@ -222,8 +291,8 @@ class IchimokuStrategy:
 
         # Définir le seuil de consolidation
         data.loc[:, 'ATR_Mean'] = data['ATR14'].rolling(window=100).mean()  # Utiliser .loc
-        data.loc[:, 'Consolidation'] = np.where(data['ATR14'] < (data['ATR_Mean'] * 0.01618033), 1, 0)  # Utiliser .loc
-
+        data.loc[:, 'Consolidation'] = np.where(data['ATR14'] < (data['ATR_Mean'] * 0.618033), 1, 0)  # Utiliser .loc
+        data = data.dropna()
         # Déterminer l'état du marché avec des conditions de confirmation, incluant le Chikou Span
         conditions = [
             (data['EMA20'] > data['EMA50']) & 
@@ -256,6 +325,9 @@ class IchimokuStrategy:
         # Utiliser uniquement les données disponibles jusqu'à l'instant présent
         current_state = data['Market State'].iloc[-1]
         current_consecutive = data['Trend_Consecutive'].iloc[-1]
+        clear_console()
+        print(ascii_art)
+
         print(f"État du marché : {current_state}, Consécutif : {current_consecutive}")
         if current_state == 'Tendance Haussière' and current_consecutive >= min_consecutive:
             return 'buy'
@@ -271,52 +343,95 @@ ichimoku_strategy = IchimokuStrategy()
 
 def execute_simulated_trade(action, current_price, spread, next_close):
     global simulation_mode, simulated_balance, simulated_gains, simulated_trades
-    simulated_profit = 0.0
-    entry_price_sim = 0.0
-    exit_price_sim = 0.0
+    global simulated_current_position, simulated_entry_price, consecutive_losses
 
     if action == 'buy':
-        entry_price_sim = current_price + spread
-        exit_price_sim = next_close - spread
-        simulated_profit = (exit_price_sim - entry_price_sim) * 0.01  # Taille de position fixe
+        if simulated_current_position is None:
+            # Ouvrir une position simulée d'achat
+            simulated_entry_price = current_price + spread
+            simulated_current_position = 'buy'
+            print(f"Position simulée BUY ouverte à {simulated_entry_price}")
+        elif simulated_current_position == 'sell':
+            # Clôturer la position simulée de vente avant d'ouvrir une position simulée d'achat
+            print("Clôture de la position simulée SELL avant d'ouvrir une position simulée BUY")
+            if close_simulated_position(current_price, spread):
+                # Ouvrir une nouvelle position simulée d'achat
+                simulated_entry_price = current_price + spread
+                simulated_current_position = 'buy'
+                print(f"Position simulée BUY ouverte à {simulated_entry_price}")
     elif action == 'sell':
-        entry_price_sim = current_price - spread
-        exit_price_sim = next_close + spread
-        simulated_profit = (entry_price_sim - exit_price_sim) * 0.01
+        if simulated_current_position is None:
+            # Ouvrir une position simulée de vente
+            simulated_entry_price = current_price - spread
+            simulated_current_position = 'sell'
+            print(f"Position simulée SELL ouverte à {simulated_entry_price}")
+        elif simulated_current_position == 'buy':
+            # Clôturer la position simulée d'achat avant d'ouvrir une position simulée de vente
+            print("Clôture de la position simulée BUY avant d'ouvrir une position simulée SELL")
+            if close_simulated_position(current_price, spread):
+                # Ouvrir une nouvelle position simulée de vente
+                simulated_entry_price = current_price - spread
+                simulated_current_position = 'sell'
+                print(f"Position simulée SELL ouverte à {simulated_entry_price}")
     elif action == 'close':
-        # Simuler la clôture sans profit ou selon la position actuelle
-        simulated_profit = 0.0
-        # Pour simplifier, on ne gère pas le profit ici
+        # Optionnellement, gérer la clôture en mode simulation si nécessaire
+        close_simulated_position(current_price, spread)  # Selon vos besoins, vous pouvez implémenter une action spécifique pour 'close'
     else:
         return  # 'hold' ne nécessite aucune action
 
-    simulated_balance += simulated_profit
-    trade = {
-        'entry_time': datetime.datetime.now(),
-        'exit_time': datetime.datetime.now(),
-        'position': action,
-        'entry_price': entry_price_sim,
-        'exit_price': exit_price_sim,
-        'profit': simulated_profit,
-        'balance': simulated_balance
-    }
-    simulated_trades.append(trade)
+def close_simulated_position(current_price, spread):
+    global simulation_mode, simulated_balance, simulated_gains, simulated_trades
+    global simulated_current_position, simulated_entry_price, consecutive_losses
 
-    if simulated_profit > 0:
-        simulated_gains += 1
-        print(f"Trade simulé gagnant {simulated_gains}/2 : {trade}")
-        if simulated_gains >= 2:
-            simulation_mode = False  # Sortir du mode simulation après 2 gains
-            simulated_gains = 0  # Réinitialiser le compteur de gains simulés
-            consecutive_losses = 0  # Réinitialiser les pertes réelles
-            print("2 gains simulés atteints. Retour en mode réel.")
+    if simulated_current_position is not None:
+        # Clôturer la position simulée actuelle
+        if simulated_current_position == 'buy':
+            exit_price = current_price - spread
+            profit = (exit_price - simulated_entry_price) * 0.01  # Taille de position fixe
+        elif simulated_current_position == 'sell':
+            exit_price = current_price + spread
+            profit = (simulated_entry_price - exit_price) * 0.01
+
+        simulated_balance += profit
+        trade = {
+            'entry_time': simulated_entry_time,  # Utiliser le temps d'entrée réel
+            'exit_time': datetime.datetime.now(),
+            'position': simulated_current_position,
+            'entry_price': simulated_entry_price,
+            'exit_price': exit_price,
+            'profit': profit,
+            'balance': simulated_balance
+        }
+        simulated_trades.append(trade)
+        
+        clear_console()
+        print(ascii_art)
+
+        if profit > 0:
+            simulated_gains += 1
+            print(f"Trade simulé gagnant {simulated_gains}/2 : {trade}")
+            if simulated_gains >= 2:
+                simulation_mode = False  # Sortir du mode simulation après 2 gains
+                simulated_gains = 0  # Réinitialiser le compteur de gains simulés
+                consecutive_losses = 0  # Réinitialiser les pertes réelles
+                print("2 gains simulés atteints. Retour en mode réel.")
+        else:
+            simulated_gains = 0  # Réinitialiser le compteur si un trade simulé est perdant
+            print(f"Trade simulé perdant : {trade}")
+            # Continuer en mode simulation jusqu'à atteindre 2 gains simulés
+
+        # Réinitialiser la position simulée
+        simulated_current_position = None
+        simulated_entry_price = 0.0
+        return True
     else:
-        simulated_gains = 0  # Réinitialiser le compteur si un trade simulé est perdant
-        print(f"Trade simulé perdant : {trade}")
-        # Continuer en mode simulation jusqu'à atteindre 2 gains simulés
+        print("Aucune position simulée ouverte à clôturer.")
+        return False
 
 def main():
     global current_position, entry_price, simulation_mode, simulated_balance, simulated_gains, consecutive_losses
+    global simulated_current_position, simulated_entry_price
+    global latest_close_price, spread, simulated_entry_time
     try:
         account_info = mt5.account_info()
         if account_info is None:
@@ -329,6 +444,9 @@ def main():
         balance = get_account_balance()
         if balance is not None:
             print(f"Solde initial du compte : {balance}")
+
+        # Vérifier les positions ouvertes existantes
+        check_existing_position()
 
         # Initialiser la dernière barre traitée
         last_bar_time = None
@@ -345,6 +463,15 @@ def main():
             latest_closed_bar = data_m1.iloc[-2]  # Bougie fermée
             latest_closed_time = latest_closed_bar.name
 
+            # Mettre à jour le prix de clôture et le spread pour la simulation
+            latest_close_price = latest_closed_bar['close']
+            tick = mt5.symbol_info_tick(symbol)
+            if tick is None:
+                print(f"Impossible de récupérer le tick pour {symbol}")
+                time.sleep(1)
+                continue
+            spread = (tick.ask - tick.bid) / 2  # Approximation du spread
+
             # Vérifier si cette bougie a déjà été traitée
             if last_bar_time != latest_closed_time:
                 print(f"Nouvelle bougie détectée à {latest_closed_time}")
@@ -359,31 +486,27 @@ def main():
                     action = 'hold'
 
                 print(f"Action décidée : {action}")
-
                 # Exécuter l'action
                 if simulation_mode:
-                    if action in ['buy', 'sell', 'close']:
-                        # Simuler le trade
-                        next_close = data_m1.iloc[-1]['close']  # Le prix de clôture suivant
-                        spread = (mt5.symbol_info_tick(symbol).ask - mt5.symbol_info_tick(symbol).bid) / 2  # Approximation du spread
-                        execute_simulated_trade(action, latest_closed_bar['close'], spread, next_close)
+                    if action in ['buy', 'sell']:
+                        # Ouvrir ou changer une position simulée
+                        simulated_entry_time = latest_closed_time  # Enregistrer le temps d'entrée
+                        execute_simulated_trade(action, latest_closed_bar['close'], spread, latest_close_price)
                 else:
                     if action == 'buy':
                         if current_position == 'sell':
-                            close_order(current_price, spread)
+                            close_order()
                         if current_position != 'buy':
                             open_order('buy')
                     elif action == 'sell':
                         if current_position == 'buy':
-                            close_order(current_price, spread)
+                            close_order()
                         if current_position != 'sell':
                             open_order('sell')
                     elif action == 'close':
                         if current_position is not None:
                             # Clôturer la position avec le dernier prix de clôture
-                            current_price = latest_closed_bar['close']
-                            spread = (mt5.symbol_info_tick(symbol).ask - mt5.symbol_info_tick(symbol).bid) / 2  # Approximation du spread
-                            close_order(current_price, spread)
+                            close_order()
                     # 'hold' ne nécessite aucune action
 
             else:
@@ -401,7 +524,7 @@ def main():
                 latest_closed_bar = data_m1.iloc[-1]
                 current_price = latest_closed_bar['close']
                 spread = (mt5.symbol_info_tick(symbol).ask - mt5.symbol_info_tick(symbol).bid) / 2  # Approximation du spread
-                close_order(current_price, spread)
+                close_order()
         mt5.shutdown()
         print("Connexion à MetaTrader5 fermée.")
         # Afficher les trades simulés
