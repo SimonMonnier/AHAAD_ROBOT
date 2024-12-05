@@ -18,8 +18,8 @@ timeframe_m1 = mt5.TIMEFRAME_M1
 
 # Définir la période de backtest
 timezone = pytz.timezone("Etc/UTC")
-start_date = datetime(2023, 1, 1, tzinfo=timezone)
-end_date = datetime(2024, 12, 1, tzinfo=timezone)
+start_date = datetime(2024, 12, 3, tzinfo=timezone)
+end_date = datetime(2024, 12, 5, tzinfo=timezone)
 
 # Vérifier si le symbole est disponible
 symbol_info = mt5.symbol_info(symbol)
@@ -137,7 +137,7 @@ class Backtest:
 
         # Définir le seuil de consolidation
         data.loc[:, 'ATR_Mean'] = data['ATR14'].rolling(window=100).mean()  # Utiliser .loc
-        data.loc[:, 'Consolidation'] = np.where(data['ATR14'] < (data['ATR_Mean'] * 0.01618033), 1, 0)  # Utiliser .loc
+        data.loc[:, 'Consolidation'] = np.where(data['ATR14'] < (data['ATR_Mean'] * 0.618033), 1, 0)  # Utiliser .loc
 
         # Déterminer l'état du marché avec des conditions de confirmation, incluant le Chikou Span
         conditions = [
@@ -357,9 +357,10 @@ class Backtest:
 
     def update_position_size(self):
         balance = self.balance
+        symbol_info = mt5.symbol_info(symbol)
         self.position_size = float("{:.2f}".format(balance * 0.0001))  # 0,01% du solde
-        if self.position_size > 100:
-            self.position_size = 100
+        if self.position_size > symbol_info.volume_max:
+            self.position_size = symbol_info.volume_max
 
     def run_backtest(self):
         data = self.calculate_indicators(self.data_m1.copy())
