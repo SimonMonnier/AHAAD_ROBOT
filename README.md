@@ -66,12 +66,6 @@ Voici les dépendances Python nécessaires :
 Pour les installer :
 
 ```bash
-pip install MetaTrader5 pandas numpy matplotlib pytz pandas_ta
-```
-
-*Optionnellement, vous pouvez installer ces dépendances à partir d’un fichier `requirements.txt` si vous en avez un :*
-
-```bash
 pip install -r requirements.txt
 ```
 
