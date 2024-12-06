@@ -3,7 +3,7 @@ Voici une version mise à jour de votre README avec la précision concernant le 
 ---
 
 # AHAAD ROBOT 
-<img src="BTCUSD.ico" alt="BTCUSD" width="750" height="750" />
+<img src="BTCUSD.ico" alt="BTCUSD" width="618" height="618" />
 
 ## Introduction
 
