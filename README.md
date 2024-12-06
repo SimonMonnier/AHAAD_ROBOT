@@ -1,4 +1,4 @@
-# AHAAD_ROBOT 
+# AHAAD ROBOT 
 <img src="BTCUSD.ico" alt="BTCUSD" width="750" height="750" />
 
 ## Introduction
@@ -113,3 +113,8 @@ Le script va se lancer, établir une connexion avec MetaTrader 5, récupérer le
 
 Ce projet est fourni "en l’état" sans garantie.  
 Veuillez noter que l’assistance en direct n’est pas garantie.
+
+
+
+
+### Mister Robot ... ;-)
