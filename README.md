@@ -109,5 +109,5 @@ Le script va se lancer, établir une connexion avec MetaTrader 5, récupérer le
 
 ## Support & Contributions
 
-Ce projet est fourni "en l’état" sans garantie. Les contributions sont les bienvenues via des pull requests ou issues sur GitHub.  
+Ce projet est fourni "en l’état" sans garantie.  
 Veuillez noter que l’assistance en direct n’est pas garantie.
