@@ -30,7 +30,7 @@ La ilaha ila llah⠀
 ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠉⠛⠻⠿⠿⠿⠿⠟⠛⠉⠁
 BTCUSD
 
-Make with love by Simon since 2019 ! ;-)⠀
+... # Make with love by Mister Robot # ...⠀
 """
 
 print(ascii_art)
