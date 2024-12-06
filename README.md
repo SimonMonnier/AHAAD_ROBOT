@@ -96,6 +96,7 @@ pip install -r requirements.txt
    ```bash
    python AHAAD_BTCUSD_M1.py
    ```
+![AHAAD](ahaad.png)
 
 Le script va se lancer, établir une connexion avec MetaTrader 5, récupérer les données, calculer les indicateurs, et exécuter les actions en fonction de la stratégie (en mode réel ou simulation selon les conditions du code).
 
