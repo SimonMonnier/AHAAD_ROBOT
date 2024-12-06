@@ -109,7 +109,7 @@ Le script va se lancer, établir une connexion avec MetaTrader 5, récupérer le
 - Assurez-vous que le trading algo est autorisé (cliquez sur le bouton Play/Stop dans la barre d'outils de MetaTrader 5).
 - Assurez-vous que le symbole (ici "BTCUSD") est bien disponible dans votre MetaTrader 5.
 - Le script utilise un mode de simulation après un certain nombre de trades perdants consécutifs. Vous pouvez étudier et modifier la logique si nécessaire.
-- Le script est configuré pour fonctionner sur des bougies M1 (1 minute) et récupérer un grand nombre de bougies. Avec un minimum de 150 000 bougies, vous vous assurez que l’historique est suffisant pour les calculs.
+- Le script est configuré pour fonctionner sur des bougies M1 (1 minute) et récupérer un grand nombre de bougies. Avec un minimum de 150 000 bougies affichées dans le graphique de Metatrader 5, vous vous assurez que l’historique est suffisant pour les calculs.
 - Le code affiche des informations dans la console ; pensez à les consulter pour toute information ou erreur.
 - Il est recommandé de tester d’abord en mode simulation ou avec un compte de démonstration avant d’utiliser le script sur un compte réel.
 
