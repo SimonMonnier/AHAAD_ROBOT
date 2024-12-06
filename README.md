@@ -1,4 +1,8 @@
-# ROBOT AHAAD 1.618 BTCUSD M1 MT5
+Voici une version mise à jour de votre README incluant les informations sur la taille des lots :
+
+---
+
+# AHAAD ROBOT BTCUSD M1 MT5
 <img src="BTCUSD.ico" alt="BTCUSD" width="618" height="618" />
 
 ## Introduction
@@ -34,7 +38,7 @@ Il est recommandé de créer un environnement virtuel dédié à ce projet afin 
    ```bash
    conda create --name trading_env python=3.9
    ```
-
+   
    Ici, nous choisissons Python 3.9, mais vous pouvez opter pour une autre version compatible.
 
 3. Activez l'environnement :
@@ -105,6 +109,13 @@ pip install -r requirements.txt
 
 Le script va se lancer, établir une connexion avec MetaTrader 5, récupérer les données, calculer les indicateurs, et exécuter les actions en fonction de la stratégie (en mode réel ou simulation selon les conditions du code).
 
+### Gestion de la Taille de Lot (Exemple de Progressivité)
+
+- La taille de lot commence à **0.01** pour un solde d’environ **100 €**.
+- Le lot est progressif : par exemple, à **1000 €**, la taille de lot est de **0.1**, à **2500 €**, le lot est de **0.25**, etc.
+
+Cette approche permet de planifier une croissance exponentielle des gains, tout en limitant le risque au fur et à mesure que le capital augmente.
+
 ## Backtesting sur Données Historiques
 
 Vous pouvez lancer des backtests à l'aide du script dédié, par exemple :
@@ -138,4 +149,19 @@ Assurez-vous que votre graphique dans MetaTrader 5 a suffisamment de données di
 Ce projet est fourni "en l’état" sans garantie.  
 Veuillez noter que l’assistance en direct n’est pas garantie.
 
-### MR... ;-)
+### MR
+###⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣀⣤⣴⣶⣶⣶⣶⣦⣤⣄⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+###⠀⠀⠀⠀⠀⠀⣀⣤⣾⣿⡿⠿⠛⠛⠛⠛⠛⠛⠻⢿⣿⣿⣦⣄⠀⠀⠀⠀⠀⠀
+###⠀⠀⠀⠀⢠⣼⣿⡿⠛⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠙⠿⣿⣷⣄⠀⠀⠀⠀
+###⠀⠀⠀⣰⣿⡿⠋⠀⠀⠀⠀⠀⣿⡇⠀⢸⣿⡇⠀⠀⠀⠀⠀⠈⢿⣿⣦⡀⠀⠀
+###⠀⠀⣸⣿⡿⠀⠀⠀⠸⠿⣿⣿⣿⡿⠿⠿⣿⣿⣿⣶⣄⠀⠀⠀⠀⢹⣿⣷⠀⠀
+###⠀⢠⣿⡿⠁⠀⠀⠀⠀⠀⢸⣿⣿⡇⠀⠀⠀⠈⣿⣿⣿⠀⠀⠀⠀⠀⢹⣿⣧⠀
+###⠀⣾⣿⡇⠀⠀⠀⠀⠀⠀⢸⣿⣿⡇⠀⠀⢀⣠⣿⣿⠟⠀⠀⠀⠀⠀⠈⣿⣿⠀
+###⠀⣿⣿⡇⠀⠀⠀⠀⠀⠀⢸⣿⣿⡿⠿⠿⠿⣿⣿⣥⣄⠀⠀⠀⠀⠀⠀⣿⣿⠀
+###⠀⢿⣿⡇⠀⠀⠀⠀⠀⠀⢸⣿⣿⡇⠀⠀⠀⠀⢻⣿⣿⣧⠀⠀⠀⠀⢀⣿⣿⠀
+###⠀⠘⣿⣷⡀⠀⠀⠀⠀⠀⢸⣿⣿⡇⠀⠀⠀⠀⣼⣿⣿⡿⠀⠀⠀⠀⣸⣿⡟⠀
+###⠀⠀⢹⣿⣷⡀⠀⠀⢰⣶⣿⣿⣿⣷⣶⣶⣾⣿⣿⠿⠛⠁⠀⠀⠀⣸⣿⡿⠀⠀
+###⠀⠀⠀⠹⣿⣷⣄⠀⠀⠀⠀⠀⣿⡇⠀⢸⣿⡇⠀⠀⠀⠀⠀⢀⣾⣿⠟⠁⠀⠀
+###⠀⠀⠀⠀⠘⢻⣿⣷⣤⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣠⣾⣿⡿⠋⠀⠀⠀⠀
+###⠀⠀⠀⠀⠀⠀⠈⠛⢿⣿⣷⣶⣤⣤⣤⣤⣤⣤⣴⣾⣿⣿⠟⠋⠀⠀⠀⠀⠀⠀
+###⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠉⠛⠻⠿⠿⠿⠿⠟⠛⠉⠁
