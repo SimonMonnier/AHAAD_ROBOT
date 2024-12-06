@@ -1,4 +1,5 @@
-# AHAAD_ROBOT ![BTCUSD](BTCUSD.ico)
+# AHAAD_ROBOT 
+![BTCUSD](BTCUSD.ico)
 
 ## Introduction
 
