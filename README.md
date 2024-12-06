@@ -1,7 +1,5 @@
 # AHAAD_ROBOT
 
-# README
-
 ## Introduction
 
 Ce projet est un script Python permettant de récupérer des données de marché via MetaTrader 5, de calculer des indicateurs techniques, puis de prendre des décisions de trading (ou de simuler celles-ci) en fonction d'une stratégie basée sur Ichimoku, RSI, EMA et ATR. Il est important de noter que ce script nécessite une installation préalable de MetaTrader 5 sur votre machine, ainsi qu'un compte chez un broker compatible MetaTrader 5.
@@ -101,7 +99,7 @@ pip install -r requirements.txt
 3. Exécutez le script Python :
 
    ```bash
-   python code.py
+   python AHAAD_BTCUSD_M1.py
    ```
 
 Le script va se lancer, établir une connexion avec MetaTrader 5, récupérer les données, calculer les indicateurs, et exécuter les actions en fonction de la stratégie (en mode réel ou simulation selon les conditions du code).
