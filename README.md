@@ -1,3 +1,7 @@
+Voici une version mise à jour de votre README avec la précision concernant le nombre de périodes (bougies) :
+
+---
+
 # AHAAD ROBOT 
 <img src="BTCUSD.ico" alt="BTCUSD" width="750" height="750" />
 
@@ -81,10 +85,13 @@ pip install -r requirements.txt
 
 **Note :** Le script Python utilise la bibliothèque `MetaTrader5` pour communiquer avec le terminal MetaTrader 5 installé sur votre machine. Cette bibliothèque ne suffit pas à elle seule, il faut bien avoir le terminal MetaTrader 5 installé et configuré.
 
+## Configuration du graphique dans MetaTrader 5
+
+- Assurez-vous d’avoir au minimum **150 000 périodes (bougies)** chargées sur le graphique du symbole que vous tradez (par exemple BTCUSD en M1). Sans ce minimum de données, le robot peut générer des erreurs en raison d’un manque d’historique.
+
 ## Utilisation du programme
 
 1. Assurez-vous que votre terminal MetaTrader 5 est lancé et connecté à votre compte broker.
-
 2. Dans votre terminal ou invite de commandes, activez l'environnement conda si ce n'est pas déjà fait :
 
    ```bash
@@ -96,25 +103,23 @@ pip install -r requirements.txt
    ```bash
    python AHAAD_BTCUSD_M1.py
    ```
+
 ![AHAAD](ahaad.png)
 
 Le script va se lancer, établir une connexion avec MetaTrader 5, récupérer les données, calculer les indicateurs, et exécuter les actions en fonction de la stratégie (en mode réel ou simulation selon les conditions du code).
 
 ## Remarques supplémentaires
 
-- Assurez-vous que le trading algo est autorisé (cliquez sur le play/stop dans la barre d'outils) dans votre MetaTrader 5
+- Assurez-vous que le trading algo est autorisé (cliquez sur le bouton Play/Stop dans la barre d'outils de MetaTrader 5).
 - Assurez-vous que le symbole (ici "BTCUSD") est bien disponible dans votre MetaTrader 5.
 - Le script utilise un mode de simulation après un certain nombre de trades perdants consécutifs. Vous pouvez étudier et modifier la logique si nécessaire.
-- Le script est configuré pour fonctionner sur des bougies M1 (1 minute) et récupérer un grand nombre de bougies. Assurez-vous que votre broker fournit ces données.
-- Le code affiche des informations dans la console, pensez à y jeter un œil pour toute information ou erreur.
+- Le script est configuré pour fonctionner sur des bougies M1 (1 minute) et récupérer un grand nombre de bougies. Avec un minimum de 150 000 bougies, vous vous assurez que l’historique est suffisant pour les calculs.
+- Le code affiche des informations dans la console ; pensez à les consulter pour toute information ou erreur.
 - Il est recommandé de tester d’abord en mode simulation ou avec un compte de démonstration avant d’utiliser le script sur un compte réel.
 
 ## Support & Contributions
 
 Ce projet est fourni "en l’état" sans garantie.  
 Veuillez noter que l’assistance en direct n’est pas garantie.
-
-
-
 
 ### Mister Robot ... ;-)
