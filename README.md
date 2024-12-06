@@ -1,4 +1,4 @@
-# AHAAD ROBOT BTCUSD M1 MT5
+# ROBOT AHAAD 1.618 BTCUSD M1 MT5
 <img src="BTCUSD.ico" alt="BTCUSD" width="618" height="618" />
 
 ## Introduction
@@ -83,9 +83,10 @@ pip install -r requirements.txt
 
 ## Configuration du graphique dans MetaTrader 5
 
-- Assurez-vous d’avoir au minimum **150 000 périodes (bougies)** chargées sur le graphique du symbole que vous tradez (par exemple BTCUSD en M1). Sans ce minimum de données, le robot peut générer des erreurs en raison d’un manque d’historique.
+- Assurez-vous d’avoir au minimum **150 000 périodes (bougies)** chargées sur le graphique du symbole que vous tradez (par exemple BTCUSD en M1). Sans ce minimum de données, le robot peut générer des erreurs en raison d’un manque d’historique.  
+- Plus vous avez de données, plus vous pourrez effectuer des tests sur une longue période (en réel ou en backtesting).
 
-## Utilisation du programme
+## Utilisation du programme de Trading en Temps Réel
 
 1. Assurez-vous que votre terminal MetaTrader 5 est lancé et connecté à votre compte broker.
 2. Dans votre terminal ou invite de commandes, activez l'environnement conda si ce n'est pas déjà fait :
@@ -94,7 +95,7 @@ pip install -r requirements.txt
    conda activate trading_env
    ```
 
-3. Exécutez le script Python :
+3. Exécutez le script Python (par exemple) :
 
    ```bash
    python AHAAD_BTCUSD_M1.py
@@ -104,12 +105,31 @@ pip install -r requirements.txt
 
 Le script va se lancer, établir une connexion avec MetaTrader 5, récupérer les données, calculer les indicateurs, et exécuter les actions en fonction de la stratégie (en mode réel ou simulation selon les conditions du code).
 
+## Backtesting sur Données Historiques
+
+Vous pouvez lancer des backtests à l'aide du script dédié, par exemple :
+
+```bash
+python backtesting_BTCUSD.py
+```
+
+Dans ce script, vous pouvez ajuster la plage de dates utilisée pour les tests. Par exemple :
+
+```python
+start_date = datetime(2024, 12, 4, tzinfo=timezone)
+end_date = datetime(2024, 12, 6, tzinfo=timezone)
+```
+
+Modifiez ces dates selon vos besoins. Notez que pour réaliser des backtests fiables sur une période plus ou moins longue, vous devrez disposer d’un historique de données suffisamment important dans MetaTrader 5. Plus l’historique est long, plus vos backtests seront représentatifs.
+
+Assurez-vous que votre graphique dans MetaTrader 5 a suffisamment de données disponibles avant d’effectuer un backtest. Sans un historique assez fourni, le backtest pourra être tronqué ou impossible sur certaines plages de dates.
+
 ## Remarques supplémentaires
 
 - Assurez-vous que le trading algo est autorisé (cliquez sur le bouton Play/Stop dans la barre d'outils de MetaTrader 5).
 - Assurez-vous que le symbole (ici "BTCUSD") est bien disponible dans votre MetaTrader 5.
 - Le script utilise un mode de simulation après un certain nombre de trades perdants consécutifs. Vous pouvez étudier et modifier la logique si nécessaire.
-- Le script est configuré pour fonctionner sur des bougies M1 (1 minute) et récupérer un grand nombre de bougies. Avec un minimum de 150 000 bougies affichées dans le graphique de Metatrader 5, vous vous assurez que l’historique est suffisant pour les calculs.
+- Le script est configuré pour fonctionner sur des bougies M1 (1 minute) et récupérer un grand nombre de bougies. Avec un minimum de 150 000 bougies affichées dans le graphique de Metatrader 5, vous vous assurez que l’historique est suffisant pour les calculs, que ce soit en temps réel ou en backtesting.
 - Le code affiche des informations dans la console ; pensez à les consulter pour toute information ou erreur.
 - Il est recommandé de tester d’abord en mode simulation ou avec un compte de démonstration avant d’utiliser le script sur un compte réel.
 
@@ -118,4 +138,4 @@ Le script va se lancer, établir une connexion avec MetaTrader 5, récupérer le
 Ce projet est fourni "en l’état" sans garantie.  
 Veuillez noter que l’assistance en direct n’est pas garantie.
 
-### Mister Robot ... ;-)
+### MR... ;-)
