@@ -1,8 +1,4 @@
-Voici une version mise à jour de votre README avec la précision concernant le nombre de périodes (bougies) :
-
----
-
-# AHAAD ROBOT 
+# AHAAD ROBOT BTCUSD M1 MT5
 <img src="BTCUSD.ico" alt="BTCUSD" width="618" height="618" />
 
 ## Introduction
