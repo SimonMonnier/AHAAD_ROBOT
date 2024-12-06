@@ -1,5 +1,5 @@
 # AHAAD_ROBOT 
-<img src="BTCUSD.ico" alt="BTCUSD" width="2500" height="2500" />
+<img src="BTCUSD.ico" alt="BTCUSD" width="1500" height="1500" />
 
 ## Introduction
 
