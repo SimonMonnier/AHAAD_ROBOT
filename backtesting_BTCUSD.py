@@ -18,8 +18,8 @@ timeframe_m1 = mt5.TIMEFRAME_M1
 
 # Définir la période de backtest
 timezone = pytz.timezone("Etc/UTC")
-start_date = datetime(2024, 12, 3, tzinfo=timezone)
-end_date = datetime(2024, 12, 5, tzinfo=timezone)
+start_date = datetime(2024, 10, 7, tzinfo=timezone)
+end_date = datetime(2024, 12, 7, tzinfo=timezone)
 
 # Vérifier si le symbole est disponible
 symbol_info = mt5.symbol_info(symbol)
@@ -137,7 +137,17 @@ class Backtest:
 
         # Définir le seuil de consolidation
         data.loc[:, 'ATR_Mean'] = data['ATR14'].rolling(window=100).mean()  # Utiliser .loc
-        data.loc[:, 'Consolidation'] = np.where(data['ATR14'] < (data['ATR_Mean'] * 0.618033), 1, 0)  # Utiliser .loc
+
+        adx = pta.adx(data['high'], data['low'], data['close'], length=14)
+        data = pd.concat([data, adx], axis=1)
+        data.loc[:, 'Consolidation'] = np.where((data['ATR14'] < (data['ATR_Mean'] * 0.618033)) & (data['ADX_14'] < 20), 1, 0)  # Utiliser .loc
+
+        #data.loc[:, 'ATR_Mean'] = data['ATR14'].rolling(window=100).mean()
+        #data.loc[:, 'Consolidation'] = np.where(
+        #    (data['ATR14'] < (data['ATR_Mean'] * 0.618033)) & (data['RSI14'].between(45, 55)), 
+        #    1, 
+        #    0
+        #)
 
         # Déterminer l'état du marché avec des conditions de confirmation, incluant le Chikou Span
         conditions = [
@@ -166,7 +176,7 @@ class Backtest:
 
         return data
 
-    def decide_action(self, data, min_consecutive=24):
+    def decide_action(self, data, min_consecutive=9):
         # Utiliser uniquement les données disponibles jusqu'à l'instant présent
         current_state = data['Market State'].iloc[-1]
         current_consecutive = data['Trend_Consecutive'].iloc[-1]
@@ -512,7 +522,7 @@ def plot_backtest(data, trades, equity_curve, actions, symbol, simulated_trades)
 
 def main():
     # Initialiser le backtest avec point_size
-    backtest = Backtest(data_m1=data_m1, point_size=point_size, initial_balance=100, stop_balance=75)
+    backtest = Backtest(data_m1=data_m1, point_size=point_size, initial_balance=1000, stop_balance=75)
 
     # Lancer le backtest avec gestion des erreurs
     try:
