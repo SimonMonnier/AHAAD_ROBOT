@@ -222,10 +222,10 @@ def close_order():
         print(ascii_art)
 
         if profit > 0:
-            print(f"Trade réel gagnant : Profit = {profit:.2f}")
+            print(f"Trade réel gagnant")
             consecutive_losses = 0  # Réinitialiser les pertes consécutives
         else:
-            print(f"Trade réel perdant : Perte = {abs(profit):.2f}")
+            print(f"Trade réel perdant)
             consecutive_losses += 1
             # Vérifier si 3 pertes consécutives sont atteintes pour activer le mode simulation
             if consecutive_losses >= 3:
