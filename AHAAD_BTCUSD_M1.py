@@ -225,7 +225,7 @@ def close_order():
             print(f"Trade réel gagnant")
             consecutive_losses = 0  # Réinitialiser les pertes consécutives
         else:
-            print(f"Trade réel perdant)
+            print(f"Trade réel perdant")
             consecutive_losses += 1
             # Vérifier si 3 pertes consécutives sont atteintes pour activer le mode simulation
             if consecutive_losses >= 3:
@@ -288,15 +288,15 @@ class IchimokuStrategy:
             raise KeyError(f"Les colonnes Ichimoku manquent : {missing_columns}")
 
         # Définir le seuil de consolidation
-        #data.loc[:, 'ATR_Mean'] = data['ATR14'].rolling(window=100).mean()  # Utiliser .loc
-        #data.loc[:, 'Consolidation'] = np.where(data['ATR14'] < (data['ATR_Mean'] * 0.618033), 1, 0)  # Utiliser .loc
+        data.loc[:, 'ATR_Mean'] = data['ATR14'].rolling(window=100).mean()  # Utiliser .loc
+        data.loc[:, 'Consolidation'] = np.where(data['ATR14'] < (data['ATR_Mean'] * 0.618033), 1, 0)  # Utiliser .loc
 
-        data.loc[:, 'ATR_Mean'] = data['ATR14'].rolling(window=100).mean()
-        data.loc[:, 'Consolidation'] = np.where(
-            (data['ATR14'] < (data['ATR_Mean'] * 0.618033)) & (data['RSI14'].between(45, 55)), 
-            1, 
-            0
-        )
+        #data.loc[:, 'ATR_Mean'] = data['ATR14'].rolling(window=100).mean()
+        #data.loc[:, 'Consolidation'] = np.where(
+        #    (data['ATR14'] < (data['ATR_Mean'] * 0.618033)) & (data['RSI14'].between(45, 55)), 
+        #    1, 
+        #    0
+        #)
         data = data.dropna()
         # Déterminer l'état du marché avec des conditions de confirmation, incluant le Chikou Span
         conditions = [
