@@ -417,11 +417,11 @@ def close_simulated_position(current_price, spread):
         if profit > 0:
             simulated_gains += 1
             print(f"Trade simulé gagnant {simulated_gains}/2 : {trade}")
-            if simulated_gains >= 2:
+            if simulated_gains >= 1:
                 simulation_mode = False  # Sortir du mode simulation après 2 gains
                 simulated_gains = 0  # Réinitialiser le compteur de gains simulés
                 consecutive_losses = 0  # Réinitialiser les pertes réelles
-                print("2 gains simulés atteints. Retour en mode réel.")
+                print("1 gain simulé atteint. Retour en mode réel.")
         else:
             simulated_gains = 0  # Réinitialiser le compteur si un trade simulé est perdant
             print(f"Trade simulé perdant : {trade}")
