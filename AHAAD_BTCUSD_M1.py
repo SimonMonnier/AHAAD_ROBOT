@@ -289,7 +289,9 @@ class IchimokuStrategy:
 
         # Définir le seuil de consolidation
         data.loc[:, 'ATR_Mean'] = data['ATR14'].rolling(window=100).mean()  # Utiliser .loc
-        data.loc[:, 'Consolidation'] = np.where(data['ATR14'] < (data['ATR_Mean'] * 0.618033), 1, 0)  # Utiliser .loc
+        adx = pta.adx(data['high'], data['low'], data['close'], length=14)
+        data = pd.concat([data, adx], axis=1)
+        data.loc[:, 'Consolidation'] = np.where((data['ATR14'] < (data['ATR_Mean'] * 0.618033)) & (data['ADX_14'] < 20), 1, 0)  # Utiliser .loc
 
         #data.loc[:, 'ATR_Mean'] = data['ATR14'].rolling(window=100).mean()
         #data.loc[:, 'Consolidation'] = np.where(
