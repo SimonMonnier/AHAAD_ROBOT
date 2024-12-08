@@ -327,7 +327,7 @@ class IchimokuStrategy:
 
         return data
 
-    def decide_action(self, data, min_consecutive=14):
+    def decide_action(self, data, min_consecutive=7):
         global consecutive_losses, simulation_mode, simulated_gains
         # Utiliser uniquement les données disponibles jusqu'à l'instant présent
         current_state = data['Market State'].iloc[-1]
