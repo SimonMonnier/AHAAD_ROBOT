@@ -19,7 +19,7 @@ timeframe_m1 = mt5.TIMEFRAME_M1
 # Définir la période de backtest
 timezone = pytz.timezone("Etc/UTC")
 start_date = datetime(2024, 10, 7, tzinfo=timezone)
-end_date = datetime(2024, 12, 7, tzinfo=timezone)
+end_date = datetime(2024, 12, 8, tzinfo=timezone)
 
 # Vérifier si le symbole est disponible
 symbol_info = mt5.symbol_info(symbol)
@@ -267,7 +267,7 @@ class Backtest:
                 self.simulation_mode = False  # Sortir du mode simulation après 2 gains
                 self.simulated_gains = 0  # Réinitialiser le compteur de gains simulés
                 self.consecutive_losses = 0  # Réinitialiser les pertes consécutives
-                print("2 gains simulés atteints. Retour en mode réel.")
+                print("1 gain simulés atteints. Retour en mode réel.")
         else:
             self.simulated_gains = 0  # Réinitialiser le compteur si un trade simulé est perdant
             print(f"Trade simulé perdant : {trade}")
