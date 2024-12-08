@@ -22,7 +22,7 @@ ascii_art = """
 ⠀⣿⣿⡇⠀⠀⠀⠀⠀⠀⢸⣿⣿⡿⠿⠿⠿⣿⣿⣥⣄⠀⠀⠀⠀⠀⠀⣿⣿⠀
 ⠀⢿⣿⡇⠀⠀⠀⠀⠀⠀⢸⣿⣿⡇⠀⠀⠀⠀⢻⣿⣿⣧⠀⠀⠀⠀⢀⣿⣿⠀
 ⠀⠘⣿⣷⡀⠀⠀⠀⠀⠀⢸⣿⣿⡇⠀⠀⠀⠀⣼⣿⣿⡿⠀⠀⠀⠀⣸⣿⡟⠀
-⠀⠀⢹⣿⣷⡀⠀⠀⢰⣶⣿⣿⣿⣷⣶⣶⣾⣿⣿⠿⠛⠁⠀⠀⠀⣸⣿⡿⠀⠀
+⠀⠀⢹⣿⣷⡀⠀⠀⢰⣶⣿⣿⣿⣷⣶⣶⣶⣾⣿⣿⠿⠛⠁⠀⠀⠀⣸⣿⡿⠀⠀
 ⠀⠀⠀⠹⣿⣷⣄⠀⠀⠀⠀⠀⣿⡇⠀⢸⣿⡇⠀⠀⠀⠀⠀⢀⣾⣿⠟⠁⠀⠀
 ⠀⠀⠀⠀⠘⢻⣿⣷⣤⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣠⣾⣿⡿⠋⠀⠀⠀⠀
 ⠀⠀⠀⠀⠀⠀⠈⠛⢿⣿⣷⣶⣤⣤⣤⣤⣤⣤⣴⣾⣿⣿⠟⠋⠀⠀⠀⠀⠀⠀
@@ -112,7 +112,6 @@ def check_existing_position():
         current_position = None
         entry_price = 0.0
 
-# Fonctions pour l'exécution des ordres réels
 def open_order(order_type):
     global current_position, entry_price, consecutive_losses, simulation_mode
     if simulation_mode:
@@ -261,13 +260,10 @@ class IchimokuStrategy:
         # Calcul du RSI
         data['RSI14'] = pta.rsi(data['close'], length=14)
         data = data.dropna()
-        # Calcul de l'Ichimoku avec append=True via l'accesseur DataFrame
+        # Calcul de l'Ichimoku
         data.ta.ichimoku(append=True)
         data = data.dropna()
-        # Debug : Vérifier les colonnes après l'ajout d'Ichimoku
-        #print("Colonnes après l'ajout d'Ichimoku :", data.columns)
 
-        # Renommer les colonnes Ichimoku pour correspondre aux noms attendus
         ichimoku_columns = {
             'ISA_9': 'ICHIMOKU_Senkou_A',
             'ISB_26': 'ICHIMOKU_Senkou_B',
@@ -275,53 +271,38 @@ class IchimokuStrategy:
             'IKS_26': 'ICHIMOKU_Kijun',
             'ICS_26': 'ICHIMOKU_Chikou'
         }
-        data = data.rename(columns=ichimoku_columns)  # Éviter inplace=True
+        data = data.rename(columns=ichimoku_columns)
 
-        # Debug : Vérifier les colonnes après renommage
-        #print("Colonnes après renommage Ichimoku :", data.columns)
-
-        # Vérifier si les colonnes Ichimoku ont été ajoutées
         required_columns = ['ICHIMOKU_Senkou_A', 'ICHIMOKU_Senkou_B', 'ICHIMOKU_Tenkan', 'ICHIMOKU_Kijun', 'ICHIMOKU_Chikou']
         missing_columns = [col for col in required_columns if col not in data.columns]
         if missing_columns:
             print(f"Erreur : Les colonnes Ichimoku manquent : {missing_columns}")
             raise KeyError(f"Les colonnes Ichimoku manquent : {missing_columns}")
 
-        # Définir le seuil de consolidation
-        data.loc[:, 'ATR_Mean'] = data['ATR14'].rolling(window=100).mean()  # Utiliser .loc
+        data.loc[:, 'ATR_Mean'] = data['ATR14'].rolling(window=100).mean()
         adx = pta.adx(data['high'], data['low'], data['close'], length=14)
         data = pd.concat([data, adx], axis=1)
-        data.loc[:, 'Consolidation'] = np.where((data['ATR14'] < (data['ATR_Mean'] * 0.618033)) & (data['ADX_14'] < 20), 1, 0)  # Utiliser .loc
+        data.loc[:, 'Consolidation'] = np.where((data['ATR14'] < (data['ATR_Mean'] * 0.618033)) & (data['ADX_14'] < 20), 1, 0)
 
-        #data.loc[:, 'ATR_Mean'] = data['ATR14'].rolling(window=100).mean()
-        #data.loc[:, 'Consolidation'] = np.where(
-        #    (data['ATR14'] < (data['ATR_Mean'] * 0.618033)) & (data['RSI14'].between(45, 55)), 
-        #    1, 
-        #    0
-        #)
         data = data.dropna()
-        # Déterminer l'état du marché avec des conditions de confirmation, incluant le Chikou Span
         conditions = [
-            (data['EMA20'] > data['EMA50']) & 
-            (data['Consolidation'] == 0) & 
-            (data['RSI14'] > 40) & 
+            (data['EMA20'] > data['EMA50']) &
+            (data['Consolidation'] == 0) &
+            (data['RSI14'] > 40) &
             (data['close'] > data['ICHIMOKU_Senkou_A']) &
-            #(data['close'] > data['ICHIMOKU_Senkou_B']) &
-            (data['ICHIMOKU_Chikou'] > data['close']),  # Filtre Chikou Span pour buy
+            (data['ICHIMOKU_Chikou'] > data['close']),
 
-            (data['EMA20'] < data['EMA50']) & 
-            (data['Consolidation'] == 0) & 
-            (data['RSI14'] < 60) & 
-            #(data['close'] < data['ICHIMOKU_Senkou_A']) &
+            (data['EMA20'] < data['EMA50']) &
+            (data['Consolidation'] == 0) &
+            (data['RSI14'] < 60) &
             (data['close'] < data['ICHIMOKU_Senkou_B']) &
-            (data['ICHIMOKU_Chikou'] < data['close']),  # Filtre Chikou Span pour sell
+            (data['ICHIMOKU_Chikou'] < data['close']),
 
             (data['Consolidation'] == 1)
         ]
         choices = ['Tendance Haussière', 'Tendance Baissière', 'Consolidation']
         data['Market State'] = np.select(conditions, choices, default='Indéterminé')
 
-        # Compter les bougies consécutives dans la tendance
         data['Trend_Consecutive'] = data['Market State'].ne(data['Market State'].shift()).cumsum()
         data['Trend_Consecutive'] = data.groupby('Trend_Consecutive').cumcount() + 1
 
@@ -329,7 +310,6 @@ class IchimokuStrategy:
 
     def decide_action(self, data, min_consecutive=7):
         global consecutive_losses, simulation_mode, simulated_gains
-        # Utiliser uniquement les données disponibles jusqu'à l'instant présent
         current_state = data['Market State'].iloc[-1]
         current_consecutive = data['Trend_Consecutive'].iloc[-1]
         clear_console()
@@ -354,54 +334,46 @@ def execute_simulated_trade(action, current_price, spread, next_close):
 
     if action == 'buy':
         if simulated_current_position is None:
-            # Ouvrir une position simulée d'achat
             simulated_entry_price = current_price + spread
             simulated_current_position = 'buy'
             print(f"Position simulée BUY ouverte à {simulated_entry_price}")
         elif simulated_current_position == 'sell':
-            # Clôturer la position simulée de vente avant d'ouvrir une position simulée d'achat
             print("Clôture de la position simulée SELL avant d'ouvrir une position simulée BUY")
             if close_simulated_position(current_price, spread):
-                # Ouvrir une nouvelle position simulée d'achat
                 simulated_entry_price = current_price + spread
                 simulated_current_position = 'buy'
                 print(f"Position simulée BUY ouverte à {simulated_entry_price}")
     elif action == 'sell':
         if simulated_current_position is None:
-            # Ouvrir une position simulée de vente
             simulated_entry_price = current_price - spread
             simulated_current_position = 'sell'
             print(f"Position simulée SELL ouverte à {simulated_entry_price}")
         elif simulated_current_position == 'buy':
-            # Clôturer la position simulée d'achat avant d'ouvrir une position simulée de vente
             print("Clôture de la position simulée BUY avant d'ouvrir une position simulée SELL")
             if close_simulated_position(current_price, spread):
-                # Ouvrir une nouvelle position simulée de vente
                 simulated_entry_price = current_price - spread
                 simulated_current_position = 'sell'
                 print(f"Position simulée SELL ouverte à {simulated_entry_price}")
     elif action == 'close':
-        # Optionnellement, gérer la clôture en mode simulation si nécessaire
-        close_simulated_position(current_price, spread)  # Selon vos besoins, vous pouvez implémenter une action spécifique pour 'close'
+        close_simulated_position(current_price, spread)
     else:
-        return  # 'hold' ne nécessite aucune action
+        return
 
 def close_simulated_position(current_price, spread):
     global simulation_mode, simulated_balance, simulated_gains, simulated_trades
-    global simulated_current_position, simulated_entry_price, consecutive_losses
+    global simulated_current_position, simulated_entry_price, consecutive_losses, simulated_entry_time
 
     if simulated_current_position is not None:
-        # Clôturer la position simulée actuelle
         if simulated_current_position == 'buy':
             exit_price = current_price - spread
-            profit = (exit_price - simulated_entry_price) * 0.01  # Taille de position fixe
+            profit = (exit_price - simulated_entry_price) * 0.01
         elif simulated_current_position == 'sell':
             exit_price = current_price + spread
             profit = (simulated_entry_price - exit_price) * 0.01
 
         simulated_balance += profit
         trade = {
-            'entry_time': simulated_entry_time,  # Utiliser le temps d'entrée réel
+            'entry_time': simulated_entry_time,
             'exit_time': datetime.datetime.now(),
             'position': simulated_current_position,
             'entry_price': simulated_entry_price,
@@ -418,16 +390,14 @@ def close_simulated_position(current_price, spread):
             simulated_gains += 1
             print(f"Trade simulé gagnant {simulated_gains}/2 : {trade}")
             if simulated_gains >= 1:
-                simulation_mode = False  # Sortir du mode simulation après 2 gains
-                simulated_gains = 0  # Réinitialiser le compteur de gains simulés
-                consecutive_losses = 0  # Réinitialiser les pertes réelles
+                simulation_mode = False
+                simulated_gains = 0
+                consecutive_losses = 0
                 print("1 gain simulé atteint. Retour en mode réel.")
         else:
-            simulated_gains = 0  # Réinitialiser le compteur si un trade simulé est perdant
+            simulated_gains = 0
             print(f"Trade simulé perdant : {trade}")
-            # Continuer en mode simulation jusqu'à atteindre 2 gains simulés
 
-        # Réinitialiser la position simulée
         simulated_current_position = None
         simulated_entry_price = 0.0
         return True
@@ -435,106 +405,104 @@ def close_simulated_position(current_price, spread):
         print("Aucune position simulée ouverte à clôturer.")
         return False
 
+def get_last_closed_bar():
+    # Récupère la dernière bougie clôturée (position 1)
+    rates = mt5.copy_rates_from_pos(symbol, timeframe, 1, 1)
+    if rates is not None and len(rates) > 0:
+        return rates[0]
+    return None
+
 def main():
     global current_position, entry_price, simulation_mode, simulated_balance, simulated_gains, consecutive_losses
     global simulated_current_position, simulated_entry_price
     global latest_close_price, spread, simulated_entry_time
+
+    account_info = mt5.account_info()
+    if account_info is None:
+        print("Échec de la récupération des informations du compte")
+        return
+
+    print("Informations du compte :", account_info)
+
+    balance = get_account_balance()
+    if balance is not None:
+        print(f"Solde initial du compte : {balance}")
+
+    check_existing_position()
+
+    last_bar_time = None
+
     try:
-        account_info = mt5.account_info()
-        if account_info is None:
-            print("Échec de la récupération des informations du compte")
-            return
-
-        print("Informations du compte :", account_info)
-
-        # Afficher le solde initial du compte
-        balance = get_account_balance()
-        if balance is not None:
-            print(f"Solde initial du compte : {balance}")
-
-        # Vérifier les positions ouvertes existantes
-        check_existing_position()
-
-        # Initialiser la dernière barre traitée
-        last_bar_time = None
-
         while True:
-            # Récupérer les dernières bougies fermées (exclure la bougie en formation)
-            data_m1 = get_data(timeframe, nb_candles)
-            if data_m1 is None or data_m1.empty:
-                print("Pas de données disponibles, réessai dans 10 secondes.")
-                time.sleep(10)
-                continue
+            # Détection de la nouvelle bougie via get_last_closed_bar
+            bar = get_last_closed_bar()
+            if bar is not None:
+                bar_time = datetime.datetime.utcfromtimestamp(bar['time']).replace(tzinfo=pytz.utc)
+                if bar_time != last_bar_time:
+                    # Nouvelle bougie détectée
+                    print(f"Nouvelle bougie détectée à {bar_time}")
+                    last_bar_time = bar_time
 
-            # Sélectionner la dernière bougie fermée
-            latest_closed_bar = data_m1.iloc[-2]  # Bougie fermée
-            latest_closed_time = latest_closed_bar.name
+                    # Récupérer les données complètes maintenant que la nouvelle bougie est apparue
+                    data_m1 = get_data(timeframe, nb_candles)
+                    if data_m1 is None or data_m1.empty:
+                        print("Pas de données disponibles, réessai plus tard.")
+                    else:
+                        # Récupération du spread et du prix de clôture de la dernière bougie fermée
+                        latest_closed_bar = data_m1.iloc[-2]
+                        latest_close_price = latest_closed_bar['close']
+                        tick = mt5.symbol_info_tick(symbol)
+                        if tick is not None:
+                            spread = (tick.ask - tick.bid) / 2
+                        else:
+                            spread = 0.0
 
-            # Mettre à jour le prix de clôture et le spread pour la simulation
-            latest_close_price = latest_closed_bar['close']
-            tick = mt5.symbol_info_tick(symbol)
-            if tick is None:
-                print(f"Impossible de récupérer le tick pour {symbol}")
-                time.sleep(1)
-                continue
-            spread = (tick.ask - tick.bid) / 2  # Approximation du spread
+                        try:
+                            data_with_indicators = ichimoku_strategy.calculate_indicators(data_m1)
+                            action = ichimoku_strategy.decide_action(data_with_indicators, min_consecutive=7)
+                        except KeyError as e:
+                            print(f"Erreur lors du calcul des indicateurs : {e}")
+                            action = 'hold'
 
-            # Vérifier si cette bougie a déjà été traitée
-            if last_bar_time != latest_closed_time:
-                print(f"Nouvelle bougie détectée à {latest_closed_time}")
-                last_bar_time = latest_closed_time
+                        print(f"Action décidée : {action}")
+                        if simulation_mode:
+                            if action in ['buy', 'sell']:
+                                simulated_entry_time = bar_time
+                                execute_simulated_trade(action, latest_closed_bar['close'], spread, latest_close_price)
+                        else:
+                            if action == 'buy':
+                                if current_position == 'sell':
+                                    close_order()
+                                if current_position != 'buy':
+                                    open_order('buy')
+                            elif action == 'sell':
+                                if current_position == 'buy':
+                                    close_order()
+                                if current_position != 'sell':
+                                    open_order('sell')
+                            elif action == 'close':
+                                if current_position is not None:
+                                    close_order()
+                            # 'hold' ne nécessite aucune action
 
-                # Calculer les indicateurs et décider de l'action
-                try:
-                    data_with_indicators = ichimoku_strategy.calculate_indicators(data_m1)
-                    action = ichimoku_strategy.decide_action(data_with_indicators, min_consecutive=7)
-                except KeyError as e:
-                    print(f"Erreur lors du calcul des indicateurs : {e}")
-                    action = 'hold'
-
-                print(f"Action décidée : {action}")
-                # Exécuter l'action
-                if simulation_mode:
-                    if action in ['buy', 'sell']:
-                        # Ouvrir ou changer une position simulée
-                        simulated_entry_time = latest_closed_time  # Enregistrer le temps d'entrée
-                        execute_simulated_trade(action, latest_closed_bar['close'], spread, latest_close_price)
-                else:
-                    if action == 'buy':
-                        if current_position == 'sell':
-                            close_order()
-                        if current_position != 'buy':
-                            open_order('buy')
-                    elif action == 'sell':
-                        if current_position == 'buy':
-                            close_order()
-                        if current_position != 'sell':
-                            open_order('sell')
-                    elif action == 'close':
-                        if current_position is not None:
-                            # Clôturer la position avec le dernier prix de clôture
-                            close_order()
-                    # 'hold' ne nécessite aucune action
-
-            else:
-                # Aucune nouvelle bougie, attendre avant de vérifier à nouveau
-                time.sleep(1)  # Attendre 1 seconde avant de vérifier à nouveau
+            # Polling fréquent (0.1 seconde)
+            time.sleep(0.1)
 
     except KeyboardInterrupt:
         print("Script interrompu par l'utilisateur")
     finally:
-        # Clôturer les positions ouvertes
         if current_position is not None:
-            # Clôturer la position avec le dernier prix de clôture disponible
             data_m1 = get_data(timeframe, 1)
             if data_m1 is not None and not data_m1.empty:
                 latest_closed_bar = data_m1.iloc[-1]
                 current_price = latest_closed_bar['close']
-                spread = (mt5.symbol_info_tick(symbol).ask - mt5.symbol_info_tick(symbol).bid) / 2  # Approximation du spread
+                if mt5.symbol_info_tick(symbol) is not None:
+                    spread = (mt5.symbol_info_tick(symbol).ask - mt5.symbol_info_tick(symbol).bid) / 2
+                else:
+                    spread = 0.0
                 close_order()
         mt5.shutdown()
         print("Connexion à MetaTrader5 fermée.")
-        # Afficher les trades simulés
         if simulated_trades:
             print("\n=== Historique des trades simulés ===")
             for trade in simulated_trades:
