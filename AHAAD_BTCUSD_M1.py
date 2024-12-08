@@ -487,7 +487,7 @@ def main():
                 # Calculer les indicateurs et décider de l'action
                 try:
                     data_with_indicators = ichimoku_strategy.calculate_indicators(data_m1)
-                    action = ichimoku_strategy.decide_action(data_with_indicators, min_consecutive=14)
+                    action = ichimoku_strategy.decide_action(data_with_indicators, min_consecutive=7)
                 except KeyError as e:
                     print(f"Erreur lors du calcul des indicateurs : {e}")
                     action = 'hold'
